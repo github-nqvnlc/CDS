@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: frappe-sites-pvc
+  namespace: frappe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frappe-app
+  namespace: frappe
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+  selector:
+    app: frappe-app
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frappe-app
+  namespace: frappe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frappe-app
+  template:
+    metadata:
+      labels:
+        app: frappe-app
+    spec:
+      containers:
+        - name: frappe
+          # Image cần chứa Python 3.10/11/12, Node 18/20, wkhtmltopdf và mã Frappe/ERPNext đã build.
+          image: your-registry/frappe-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: frappe-settings
+          env:
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: frappe-db-secret
+                  key: mariadb-database
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: frappe-db-secret
+                  key: mariadb-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: frappe-db-secret
+                  key: mariadb-password
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: frappe-site-config
+                  key: admin-password
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: frappe-site-config
+                  key: encryption-key
+          volumeMounts:
+            - name: sites
+              mountPath: /home/frappe/frappe-bench/sites
+      volumes:
+        - name: sites
+          persistentVolumeClaim:
+            claimName: frappe-sites-pvc
+

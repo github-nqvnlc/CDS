@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frappe-ingress
+  namespace: frappe
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: site1.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frappe-app
+                port:
+                  number: 8000
+  tls:
+    # Bỏ comment khi có cert-manager và secret TLS.
+    # - hosts:
+    #     - site1.local
+    #   secretName: frappe-tls
+
